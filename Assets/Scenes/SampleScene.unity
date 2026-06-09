@@ -205,7 +205,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1058154234}
   m_HandleRect: {fileID: 1058154233}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -282,7 +282,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 76.51572}
+  m_AnchoredPosition: {x: 0, y: 76.51483}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &14404297
@@ -3035,12 +3035,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08d0e52d4f7717d4a9d6ffae77ab8dba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  connectionStatusTxt: {fileID: 1678523482}
-  roomNameInp: {fileID: 0}
   loginMenuObj: {fileID: 1788621177}
   lobbyMenuObj: {fileID: 1262734073}
   roomMenuObj: {fileID: 1240906709}
+  connectionStatusTxt: {fileID: 1678523482}
+  roomNameInp: {fileID: 0}
   roomUIManager: {fileID: 1240906711}
+  roomListContent: {fileID: 14404296}
+  roomInfoDataPrefab: {fileID: 6496268604977648014, guid: 33a93d9bb42d5de4099bc6251a56b4d9, type: 3}
 --- !u!4 &1370366760
 Transform:
   m_ObjectHideFlags: 0
