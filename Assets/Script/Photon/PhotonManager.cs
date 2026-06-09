@@ -16,11 +16,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     [Header("UI Elements")]
     public Text connectionStatusTxt;
-    public InputField playerIdInp; // -> Tambahan baru untuk menangkap Input ID Player saat login
+    public InputField playerIdInp; 
     public InputField roomNameInp;
 
     [Header("Photon Room & List Setup")]
     public RoomUIManager roomUIManager;
+    // Memastikan penulisan variabel seragam agar error CS0103 hilang
     public Transform roomListContent; 
     public RoomInfoData roomInfoDataPrefab; 
 
@@ -54,7 +55,6 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // --- SEKARANG LOGIN LEWAT PLAYFAB DULU ---
     public void LoginWithPlayFab() {
         if (playerIdInp == null || string.IsNullOrEmpty(playerIdInp.text)) {
             Debug.LogError("ID Player tidak boleh kosong!");
@@ -64,7 +64,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         Debug.Log("Mengautentikasi ke PlayFab...");
         var request = new LoginWithCustomIDRequest {
             CustomId = playerIdInp.text,
-            CreateAccount = true // Otomatis daftar jika ID belum ada
+            CreateAccount = true 
         };
 
         PlayFabClientAPI.LoginWithCustomID(request, OnPlayFabLoginSuccess, OnPlayFabLoginFailed);
@@ -73,7 +73,6 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     private void OnPlayFabLoginSuccess(LoginResult result) {
         Debug.Log("<color=green>PlayFab Login Sukses!</color> Menyambungkan ke Photon...");
         
-        // Setelah PlayFab sukses, baru oper ID-nya ke Photon
         PhotonNetwork.AuthValues = new AuthenticationValues {
             UserId = playerIdInp.text
         };
@@ -85,28 +84,30 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         Debug.LogError("PlayFab Login Gagal: " + error.GenerateErrorReport());
     }
 
-   /// <summary>
-    /// Dipanggil otomatis ketika status sudah "ConnectedToMaster"
-    /// </summary>
     public override void OnConnectedToMaster()
     {
         SaatDiMenuLobby();
-        
-        // --- PERBAIKAN: Berikan proteksi agar tidak memaksa JoinLobby jika statusnya belum siap ---
         if (PhotonNetwork.NetworkClientState == ClientState.ConnectedToMaster)
         {
-            Debug.Log("Status valid, mencoba bergabung ke Lobby...");
             PhotonNetwork.JoinLobby(); 
         }
-        else
-        {
-            Debug.LogWarning("JoinLobby ditunda karena status saat ini: " + PhotonNetwork.NetworkClientState);
-        }
+    }
+
+    public override void OnJoinedLobby()
+    {
+        Debug.Log("<color=green>Pemain berhasil masuk ke Lobby Jaringan!</color>");
+        SaatDiMenuLobby();
     }
 
     public void CreateRoom() {
         if (roomNameInp == null || string.IsNullOrEmpty(roomNameInp.text)) {
             Debug.LogError("Nama Room tidak boleh kosong!");
+            return;
+        }
+
+        // Proteksi: Hanya boleh Create jika statusnya sudah di dalam Lobby / Master Server
+        if (!PhotonNetwork.InLobby && PhotonNetwork.NetworkClientState != ClientState.ConnectedToMaster) {
+            Debug.LogWarning("Belum siap membuat room. Status saat ini: " + PhotonNetwork.NetworkClientState);
             return;
         }
 
@@ -120,6 +121,14 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     public void JoinRoom() {
         if (roomNameInp == null || string.IsNullOrEmpty(roomNameInp.text)) return;
+
+        // PROTEKSI BARU: Mencegah error 'Client is not ready for operations'
+        if (!PhotonNetwork.InLobby && PhotonNetwork.NetworkClientState != ClientState.ConnectedToMaster) {
+            Debug.LogWarning("Belum siap bergabung ke room. Status jaringan saat ini: " + PhotonNetwork.NetworkClientState);
+            return;
+        }
+
+        Debug.Log("Mencoba bergabung ke room: " + roomNameInp.text);
         PhotonNetwork.JoinRoom(roomNameInp.text);
     }
 
@@ -155,7 +164,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     void ClearRoom() {
         if (roomListContent == null) return;
         
-        for (int i = 0; i < roomListContent.childCount; i++) {
+        for (int i = roomListContent.childCount - 1; i >= 0; i--) {
             Destroy(roomListContent.GetChild(i).gameObject);
         }
     }

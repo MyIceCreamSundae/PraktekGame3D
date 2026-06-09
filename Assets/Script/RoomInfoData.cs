@@ -23,6 +23,13 @@ public class RoomInfoData : MonoBehaviour
     }
 
     public void JoinRoom() {
+        // PERBAIKAN: Deteksi isi teks sebelum mengirim perintah ke Photon
+        if (roomNameTxt == null || string.IsNullOrEmpty(roomNameTxt.text)) {
+            Debug.LogError("<color=red>[Error Join]</color> Komponen roomNameTxt kosong atau belum dihubungkan di Inspector prefab!");
+            return;
+        }
+
+        Debug.Log("<color=yellow>[Mencoba Join via Tombol Prefab]</color> Mengirim nama room: " + roomNameTxt.text);
         PhotonNetwork.JoinRoom(roomNameTxt.text);
     }
 }
