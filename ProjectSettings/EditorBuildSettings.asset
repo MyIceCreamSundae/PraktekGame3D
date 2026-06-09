@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/TapTap.unity
+    guid: 5c4c91825c19c6d4491852ac32081891
   m_configObjects: {}
