@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using PlayFab;
+using PlayFab.ClientModels;
 using Photon.Pun;
 using Photon.Realtime;
 
@@ -14,66 +16,102 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     [Header("UI Elements")]
     public Text connectionStatusTxt;
+    public InputField playerIdInp; // -> Tambahan baru untuk menangkap Input ID Player saat login
     public InputField roomNameInp;
 
     [Header("Photon Room & List Setup")]
     public RoomUIManager roomUIManager;
-    // --- KEDUA VARIABEL DI BAWAH INI YANG SEBELUMNYA REBUT/BELUM ADA ---
     public Transform roomListContent; 
     public RoomInfoData roomInfoDataPrefab; 
 
     void SaatDiMenuLogin() {
-        loginMenuObj.SetActive(true);
-        lobbyMenuObj.SetActive(false);
-        roomMenuObj.SetActive(false);
+        if (loginMenuObj != null) loginMenuObj.SetActive(true);
+        if (lobbyMenuObj != null) lobbyMenuObj.SetActive(false);
+        if (roomMenuObj != null) roomMenuObj.SetActive(false);
     }
 
     void SaatDiMenuLobby() {
-        loginMenuObj.SetActive(false);
-        lobbyMenuObj.SetActive(true);
-        roomMenuObj.SetActive(false);
+        if (loginMenuObj != null) loginMenuObj.SetActive(false);
+        if (lobbyMenuObj != null) lobbyMenuObj.SetActive(true);
+        if (roomMenuObj != null) roomMenuObj.SetActive(false);
     }
 
     void SaatDiDalamRoom() {
-        loginMenuObj.SetActive(false);
-        lobbyMenuObj.SetActive(false);
-        roomMenuObj.SetActive(true);
+        if (loginMenuObj != null) loginMenuObj.SetActive(false);
+        if (lobbyMenuObj != null) lobbyMenuObj.SetActive(false);
+        if (roomMenuObj != null) roomMenuObj.SetActive(true);
     }
 
-    // Start is called before the first frame update
     void Start()
     {
         SaatDiMenuLogin();
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (connectionStatusTxt != null) {
-            connectionStatusTxt.text = PhotonNetwork.NetworkClientState.ToString();
+            connectionStatusTxt.text = "Status: " + PhotonNetwork.NetworkClientState.ToString();
         }
     }
 
-    public void LoginWithId(string id) {
+    // --- SEKARANG LOGIN LEWAT PLAYFAB DULU ---
+    public void LoginWithPlayFab() {
+        if (playerIdInp == null || string.IsNullOrEmpty(playerIdInp.text)) {
+            Debug.LogError("ID Player tidak boleh kosong!");
+            return;
+        }
+
+        Debug.Log("Mengautentikasi ke PlayFab...");
+        var request = new LoginWithCustomIDRequest {
+            CustomId = playerIdInp.text,
+            CreateAccount = true // Otomatis daftar jika ID belum ada
+        };
+
+        PlayFabClientAPI.LoginWithCustomID(request, OnPlayFabLoginSuccess, OnPlayFabLoginFailed);
+    }
+
+    private void OnPlayFabLoginSuccess(LoginResult result) {
+        Debug.Log("<color=green>PlayFab Login Sukses!</color> Menyambungkan ke Photon...");
+        
+        // Setelah PlayFab sukses, baru oper ID-nya ke Photon
         PhotonNetwork.AuthValues = new AuthenticationValues {
-            UserId = id
+            UserId = playerIdInp.text
         };
 
         PhotonNetwork.ConnectUsingSettings();
     }
 
-    /// <summary>
+    private void OnPlayFabLoginFailed(PlayFabError error) {
+        Debug.LogError("PlayFab Login Gagal: " + error.GenerateErrorReport());
+    }
+
+   /// <summary>
     /// Dipanggil otomatis ketika status sudah "ConnectedToMaster"
     /// </summary>
     public override void OnConnectedToMaster()
     {
         SaatDiMenuLobby();
-        PhotonNetwork.JoinLobby(); //agar kita bisa mendapatkan Room List, maka kita harus JoinLobby terlebih dahulu....
+        
+        // --- PERBAIKAN: Berikan proteksi agar tidak memaksa JoinLobby jika statusnya belum siap ---
+        if (PhotonNetwork.NetworkClientState == ClientState.ConnectedToMaster)
+        {
+            Debug.Log("Status valid, mencoba bergabung ke Lobby...");
+            PhotonNetwork.JoinLobby(); 
+        }
+        else
+        {
+            Debug.LogWarning("JoinLobby ditunda karena status saat ini: " + PhotonNetwork.NetworkClientState);
+        }
     }
 
     public void CreateRoom() {
+        if (roomNameInp == null || string.IsNullOrEmpty(roomNameInp.text)) {
+            Debug.LogError("Nama Room tidak boleh kosong!");
+            return;
+        }
+
         RoomOptions roomOptions = new RoomOptions {
-            MaxPlayers = 2, //Karena pada tutorial kali ini harus bermain dengan 2 player
+            MaxPlayers = 2, 
             PublishUserId = true
         };
 
@@ -81,21 +119,15 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     }
 
     public void JoinRoom() {
+        if (roomNameInp == null || string.IsNullOrEmpty(roomNameInp.text)) return;
         PhotonNetwork.JoinRoom(roomNameInp.text);
     }
 
-    /// <summary>
-    /// Dipanggil otomatis ketika room berhasil dibuat
-    /// </summary>
     public override void OnCreatedRoom()
     {
         print("OnCreatedRoom!");
-        //Note: OnJoinedRoom akan dipanggil Setelah OnCreatedRoom
     }
 
-    /// <summary>
-    /// Dipanggil otomatis ketika status sudah "Joined"
-    /// </summary>
     public override void OnJoinedRoom()
     {
         print("OnJoinedRoom!");
@@ -110,8 +142,10 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     public override void OnRoomListUpdate(List<RoomInfo> roomList)
     {
         ClearRoom();
+        if (roomListContent == null || roomInfoDataPrefab == null) return;
+
         foreach (RoomInfo roomInfo in roomList) {
-            if (roomInfo.PlayerCount == roomInfo.MaxPlayers) continue; //Jika room sudah full, maka tidak perlu ditampilkan
+            if (roomInfo.RemovedFromList || !roomInfo.IsOpen || !roomInfo.IsVisible || roomInfo.PlayerCount == roomInfo.MaxPlayers) continue;
 
             RoomInfoData spawnedRoom = Instantiate(roomInfoDataPrefab, roomListContent);
             spawnedRoom.Setup(roomInfo);
